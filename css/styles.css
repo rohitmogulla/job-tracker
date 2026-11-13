@@ -177,6 +177,57 @@ textarea:focus {
   background: var(--primary-hover);
 }
 
+/* Summary counts */
+.summary {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+}
+
+.summary-item {
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  background: var(--bg);
+}
+
+.summary-count {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.summary-label {
+  font-size: 0.8rem;
+}
+
+/* Filter / sort toolbar */
+.toolbar {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.result-count {
+  margin: 0 0 8px;
+  min-height: 1.2em;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+@media (max-width: 600px) {
+  .toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+  .toolbar .field:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
 /* Job list */
 .job-list {
   list-style: none;

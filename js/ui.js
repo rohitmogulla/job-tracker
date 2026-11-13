@@ -10,6 +10,9 @@ const statusSelect = document.getElementById('status');
 const formTitle = document.getElementById('form-title');
 const submitBtn = document.getElementById('submit-btn');
 const cancelBtn = document.getElementById('cancel-btn');
+const summaryEl = document.getElementById('summary');
+const filterStatusEl = document.getElementById('filter-status');
+const resultCountEl = document.getElementById('result-count');
 
 const FIELDS = ['company', 'role', 'link', 'dateApplied', 'status', 'notes'];
 
@@ -21,7 +24,32 @@ export function initForm() {
     opt.textContent = status;
     statusSelect.append(opt);
   }
+  for (const status of ['All', ...STATUSES]) {
+    const opt = document.createElement('option');
+    opt.value = status;
+    opt.textContent = status === 'All' ? 'All statuses' : status;
+    filterStatusEl.append(opt);
+  }
   resetForm();
+}
+
+/** Show total + per-status counts (always across all jobs, not just the filtered ones). */
+export function renderSummary(counts, total) {
+  const items = [['Total', total, '']].concat(
+    STATUSES.map((s) => [s, counts[s], `badge-${s.toLowerCase()}`])
+  );
+  summaryEl.replaceChildren(
+    ...items.map(([label, count, cls]) => {
+      const li = el('li', `summary-item ${cls}`.trim());
+      li.append(el('span', 'summary-count', String(count)), el('span', 'summary-label', label));
+      return li;
+    })
+  );
+}
+
+/** "Showing 3 of 10" when filters hide some jobs; blank otherwise. */
+export function renderResultCount(shown, total) {
+  resultCountEl.textContent = shown < total ? `Showing ${shown} of ${total}` : '';
 }
 
 export function readForm() {

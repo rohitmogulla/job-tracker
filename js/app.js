@@ -1,7 +1,15 @@
 // Entry point: holds state, wires events, and re-renders after every change.
 
 import { loadJobs, saveJobs } from './storage.js';
-import { createJob, updateJob, deleteJob, validateJob, sortJobs } from './jobs.js';
+import {
+  createJob,
+  updateJob,
+  deleteJob,
+  validateJob,
+  filterJobs,
+  sortJobs,
+  countByStatus,
+} from './jobs.js';
 import {
   initForm,
   readForm,
@@ -10,15 +18,36 @@ import {
   showErrors,
   showMessage,
   renderList,
+  renderSummary,
+  renderResultCount,
 } from './ui.js';
 
 const state = {
   jobs: loadJobs(),
   editingId: null,
+  filter: 'All',
+  search: '',
+  sort: { key: 'dateApplied', dir: 'desc' },
 };
 
+function hasActiveFilters() {
+  return state.filter !== 'All' || state.search.trim() !== '';
+}
+
 function render() {
-  renderList(sortJobs(state.jobs, 'dateApplied', 'desc'), { editingId: state.editingId });
+  const visible = sortJobs(
+    filterJobs(state.jobs, { status: state.filter, search: state.search }),
+    state.sort.key,
+    state.sort.dir
+  );
+  const emptyText =
+    state.jobs.length === 0
+      ? 'No jobs yet. Add your first application above.'
+      : 'No jobs match your search or filter.';
+
+  renderList(visible, { editingId: state.editingId, emptyText });
+  renderSummary(countByStatus(state.jobs), state.jobs.length);
+  renderResultCount(visible.length, state.jobs.length);
 }
 
 /** Apply a change to the job list, save it, and re-render. Leaves state unchanged if saving fails. */
@@ -35,6 +64,13 @@ function commit(nextJobs) {
 
 function findJob(id) {
   return state.jobs.find((job) => job.id === id);
+}
+
+/** Note when a job the user just added or edited is hidden by the current filters. */
+function hiddenNote(job) {
+  if (!hasActiveFilters()) return '';
+  const visible = filterJobs([job], { status: state.filter, search: state.search }).length > 0;
+  return visible ? '' : ' (hidden by the current filter)';
 }
 
 function stopEditing() {
@@ -60,7 +96,7 @@ document.getElementById('job-form').addEventListener('submit', (e) => {
     if (commit(updateJob(state.jobs, id, fields))) {
       const job = findJob(id);
       resetForm();
-      showMessage(`Saved changes to ${job.role} at ${job.company}.`);
+      showMessage(`Saved changes to ${job.role} at ${job.company}.${hiddenNote(job)}`);
     } else {
       state.editingId = id;
     }
@@ -70,7 +106,7 @@ document.getElementById('job-form').addEventListener('submit', (e) => {
   const job = createJob(fields);
   if (commit([...state.jobs, job])) {
     resetForm();
-    showMessage(`Added ${job.role} at ${job.company}.`);
+    showMessage(`Added ${job.role} at ${job.company}.${hiddenNote(job)}`);
     document.getElementById('company').focus();
   }
 });
@@ -120,6 +156,23 @@ document.getElementById('job-list').addEventListener('change', (e) => {
   }
   // Keep the form in sync if this job is open for editing.
   if (state.editingId === id) document.getElementById('status').value = select.value;
+});
+
+// Search, filter, sort
+document.getElementById('search').addEventListener('input', (e) => {
+  state.search = e.target.value;
+  render();
+});
+
+document.getElementById('filter-status').addEventListener('change', (e) => {
+  state.filter = e.target.value;
+  render();
+});
+
+document.getElementById('sort').addEventListener('change', (e) => {
+  const [key, dir] = e.target.value.split(':');
+  state.sort = { key, dir };
+  render();
 });
 
 initForm();

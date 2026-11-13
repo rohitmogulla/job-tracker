@@ -62,6 +62,30 @@
 
     <section class="panel" aria-labelledby="list-title">
       <h2 id="list-title">Applications</h2>
+
+      <ul id="summary" class="summary" aria-label="Applications by status"></ul>
+
+      <div class="toolbar">
+        <div class="field">
+          <label for="search">Search</label>
+          <input id="search" type="search" placeholder="Company, role, or notes">
+        </div>
+        <div class="field">
+          <label for="filter-status">Status</label>
+          <select id="filter-status"></select>
+        </div>
+        <div class="field">
+          <label for="sort">Sort by</label>
+          <select id="sort">
+            <option value="dateApplied:desc">Newest first</option>
+            <option value="dateApplied:asc">Oldest first</option>
+            <option value="company:asc">Company A–Z</option>
+            <option value="company:desc">Company Z–A</option>
+          </select>
+        </div>
+      </div>
+
+      <p id="result-count" class="result-count" role="status"></p>
       <ul id="job-list" class="job-list"></ul>
       <p id="empty-state" class="empty-state" hidden>No jobs yet. Add your first application above.</p>
     </section>
