@@ -26,16 +26,40 @@ function isValidHttpUrl(value) {
   }
 }
 
+const str = (v) => (typeof v === 'string' ? v.trim() : '');
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 /** Trim and normalize raw form fields. */
 function clean(fields) {
   return {
-    company: (fields.company || '').trim(),
-    role: (fields.role || '').trim(),
-    link: normalizeLink(fields.link),
-    dateApplied: fields.dateApplied || todayISO(),
+    company: str(fields.company),
+    role: str(fields.role),
+    link: normalizeLink(str(fields.link)),
+    dateApplied: str(fields.dateApplied) || todayISO(),
     status: STATUSES.includes(fields.status) ? fields.status : 'Applied',
-    notes: (fields.notes || '').trim(),
+    notes: str(fields.notes),
   };
+}
+
+/**
+ * Make data loaded from storage safe to render: drop entries without a company/role,
+ * fill missing fields, fix duplicate ids, and remove any link that isn't http(s)
+ * (e.g. a tampered "javascript:" link).
+ */
+export function sanitizeJobs(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  return list.flatMap((raw) => {
+    if (!raw || typeof raw !== 'object') return [];
+    const c = clean(raw);
+    if (!c.company || !c.role) return [];
+    if (c.link && !isValidHttpUrl(c.link)) c.link = '';
+    if (!DATE_RE.test(c.dateApplied)) c.dateApplied = todayISO();
+    const id = typeof raw.id === 'string' && raw.id && !seen.has(raw.id) ? raw.id : newId();
+    seen.add(id);
+    const createdAt = Number(raw.createdAt) || Date.now();
+    return [{ id, ...c, createdAt, updatedAt: Number(raw.updatedAt) || createdAt }];
+  });
 }
 
 /**
@@ -49,7 +73,7 @@ export function validateJob(fields) {
   if (!c.role) errors.role = 'Role is required.';
   if (c.link && !isValidHttpUrl(c.link)) errors.link = 'Enter a valid web address.';
   if (fields.status && !STATUSES.includes(fields.status)) errors.status = 'Pick a valid status.';
-  if (c.dateApplied && !/^\d{4}-\d{2}-\d{2}$/.test(c.dateApplied)) {
+  if (!DATE_RE.test(c.dateApplied)) {
     errors.dateApplied = 'Enter a valid date.';
   }
   return errors;

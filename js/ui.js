@@ -24,6 +24,12 @@ export function initForm() {
     opt.textContent = status;
     statusSelect.append(opt);
   }
+  // Link each error message to its input so screen readers announce it.
+  for (const errEl of form.querySelectorAll('[data-error-for]')) {
+    const name = errEl.dataset.errorFor;
+    errEl.id = `${name}-error`;
+    form.elements[name].setAttribute('aria-describedby', errEl.id);
+  }
   for (const status of ['All', ...STATUSES]) {
     const opt = document.createElement('option');
     opt.value = status;
@@ -79,17 +85,25 @@ function setFormMode(editing) {
   cancelBtn.hidden = !editing;
 }
 
+function setFieldError(name, msg) {
+  const input = form.elements[name];
+  if (!input) return;
+  const errEl = form.querySelector(`[data-error-for="${name}"]`);
+  if (errEl) errEl.textContent = msg;
+  input.closest('.field').classList.toggle('has-error', Boolean(msg));
+  if (msg) input.setAttribute('aria-invalid', 'true');
+  else input.removeAttribute('aria-invalid');
+}
+
 export function showErrors(errors) {
-  for (const name of FIELDS) {
-    const errEl = form.querySelector(`[data-error-for="${name}"]`);
-    const input = form.elements[name];
-    const msg = errors[name] || '';
-    if (errEl) errEl.textContent = msg;
-    input.closest('.field').classList.toggle('has-error', Boolean(msg));
-    input.setAttribute('aria-invalid', msg ? 'true' : 'false');
-  }
+  for (const name of FIELDS) setFieldError(name, errors[name] || '');
   const firstInvalid = FIELDS.find((name) => errors[name]);
   if (firstInvalid) form.elements[firstInvalid].focus();
+}
+
+/** Clear one field's error, e.g. as soon as the user starts fixing it. */
+export function clearFieldError(name) {
+  if (FIELDS.includes(name)) setFieldError(name, '');
 }
 
 export function showMessage(text, isError = false) {

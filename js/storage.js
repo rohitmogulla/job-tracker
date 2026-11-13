@@ -1,6 +1,6 @@
 // The only module that touches localStorage.
 
-const STORAGE_KEY = 'jobTracker.v1';
+export const STORAGE_KEY = 'jobTracker.v1';
 const VERSION = 1;
 
 /**

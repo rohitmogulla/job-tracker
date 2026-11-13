@@ -1,7 +1,8 @@
 // Entry point: holds state, wires events, and re-renders after every change.
 
-import { loadJobs, saveJobs } from './storage.js';
+import { STORAGE_KEY, loadJobs, saveJobs } from './storage.js';
 import {
+  sanitizeJobs,
   createJob,
   updateJob,
   deleteJob,
@@ -16,6 +17,7 @@ import {
   resetForm,
   fillForm,
   showErrors,
+  clearFieldError,
   showMessage,
   renderList,
   renderSummary,
@@ -23,7 +25,7 @@ import {
 } from './ui.js';
 
 const state = {
-  jobs: loadJobs(),
+  jobs: sanitizeJobs(loadJobs()),
   editingId: null,
   filter: 'All',
   search: '',
@@ -116,6 +118,19 @@ document.getElementById('cancel-btn').addEventListener('click', () => {
   showMessage('');
 });
 
+// Clear a field's error as soon as the user edits it.
+document.getElementById('job-form').addEventListener('input', (e) => {
+  clearFieldError(e.target.name);
+});
+
+// Escape cancels editing (when focus is in the form).
+document.getElementById('job-form').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.editingId) {
+    stopEditing();
+    showMessage('Edit cancelled.');
+  }
+});
+
 // Edit / delete buttons (event delegation on the list)
 document.getElementById('job-list').addEventListener('click', (e) => {
   const button = e.target.closest('button[data-action]');
@@ -172,6 +187,18 @@ document.getElementById('filter-status').addEventListener('change', (e) => {
 document.getElementById('sort').addEventListener('change', (e) => {
   const [key, dir] = e.target.value.split(':');
   state.sort = { key, dir };
+  render();
+});
+
+// Keep multiple open tabs in sync, so one tab doesn't overwrite another's changes.
+window.addEventListener('storage', (e) => {
+  if (e.key !== STORAGE_KEY && e.key !== null) return; // null = storage was cleared
+  state.jobs = sanitizeJobs(loadJobs());
+  if (state.editingId && !findJob(state.editingId)) {
+    stopEditing();
+    showMessage('The job you were editing was deleted in another tab.', true);
+    return;
+  }
   render();
 });
 
