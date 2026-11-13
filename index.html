@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Tracker</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <h1>Job Tracker</h1>
+  </header>
+
+  <main class="container">
+    <section class="panel" aria-labelledby="form-title">
+      <h2 id="form-title">Add a job</h2>
+      <form id="job-form" novalidate>
+        <div class="form-grid">
+          <div class="field">
+            <label for="company">Company <span class="req" aria-hidden="true">*</span></label>
+            <input id="company" name="company" type="text" autocomplete="organization" required>
+            <p class="error" data-error-for="company"></p>
+          </div>
+
+          <div class="field">
+            <label for="role">Role <span class="req" aria-hidden="true">*</span></label>
+            <input id="role" name="role" type="text" required>
+            <p class="error" data-error-for="role"></p>
+          </div>
+
+          <div class="field">
+            <label for="link">Link</label>
+            <input id="link" name="link" type="url" placeholder="https://…" inputmode="url">
+            <p class="error" data-error-for="link"></p>
+          </div>
+
+          <div class="field">
+            <label for="dateApplied">Date applied</label>
+            <input id="dateApplied" name="dateApplied" type="date">
+            <p class="error" data-error-for="dateApplied"></p>
+          </div>
+
+          <div class="field">
+            <label for="status">Status</label>
+            <select id="status" name="status"></select>
+            <p class="error" data-error-for="status"></p>
+          </div>
+
+          <div class="field field-full">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="submit-btn" class="btn btn-primary">Add job</button>
+          <button type="button" id="cancel-btn" class="btn" hidden>Cancel</button>
+        </div>
+        <p id="form-message" class="form-message" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="list-title">
+      <h2 id="list-title">Applications</h2>
+      <ul id="job-list" class="job-list"></ul>
+      <p id="empty-state" class="empty-state" hidden>No jobs yet. Add your first application above.</p>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
