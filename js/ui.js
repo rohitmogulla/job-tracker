@@ -7,6 +7,9 @@ const listEl = document.getElementById('job-list');
 const emptyEl = document.getElementById('empty-state');
 const messageEl = document.getElementById('form-message');
 const statusSelect = document.getElementById('status');
+const formTitle = document.getElementById('form-title');
+const submitBtn = document.getElementById('submit-btn');
+const cancelBtn = document.getElementById('cancel-btn');
 
 const FIELDS = ['company', 'role', 'link', 'dateApplied', 'status', 'notes'];
 
@@ -30,6 +33,22 @@ export function resetForm() {
   form.elements.dateApplied.value = todayISO();
   form.elements.status.value = 'Applied';
   showErrors({});
+  setFormMode(false);
+}
+
+/** Load a job into the form for editing. */
+export function fillForm(job) {
+  showErrors({});
+  for (const name of FIELDS) form.elements[name].value = job[name] || '';
+  setFormMode(true);
+  form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  form.elements.company.focus({ preventScroll: true });
+}
+
+function setFormMode(editing) {
+  formTitle.textContent = editing ? 'Edit job' : 'Add a job';
+  submitBtn.textContent = editing ? 'Save changes' : 'Add job';
+  cancelBtn.hidden = !editing;
 }
 
 export function showErrors(errors) {
@@ -68,8 +87,38 @@ function el(tag, className, text) {
   return node;
 }
 
-function renderJob(job) {
+function renderActions(job) {
+  const actions = el('div', 'job-actions');
+
+  const label = el('label', 'status-control');
+  label.append(el('span', '', 'Status'));
+  const select = el('select');
+  select.dataset.action = 'status';
+  for (const status of STATUSES) {
+    const opt = el('option', '', status);
+    opt.value = status;
+    select.append(opt);
+  }
+  select.value = job.status;
+  label.append(select);
+
+  const edit = el('button', 'btn btn-small', 'Edit');
+  edit.type = 'button';
+  edit.dataset.action = 'edit';
+  edit.setAttribute('aria-label', `Edit ${job.role} at ${job.company}`);
+
+  const del = el('button', 'btn btn-small btn-danger', 'Delete');
+  del.type = 'button';
+  del.dataset.action = 'delete';
+  del.setAttribute('aria-label', `Delete ${job.role} at ${job.company}`);
+
+  actions.append(label, edit, del);
+  return actions;
+}
+
+function renderJob(job, editingId) {
   const li = el('li', 'job-card');
+  li.classList.toggle('is-editing', job.id === editingId);
   li.dataset.id = job.id;
 
   const head = el('div', 'job-card-head');
@@ -96,16 +145,22 @@ function renderJob(job) {
     li.append(notes);
   }
 
+  li.append(renderActions(job));
   return li;
 }
 
 /**
  * Render the job list.
  * @param {Array} jobs - jobs to display (already filtered/sorted)
- * @param {string} emptyText - message to show when the list is empty
+ * @param {object} options
+ * @param {string|null} options.editingId - id of the job currently in the form, highlighted
+ * @param {string} options.emptyText - message to show when the list is empty
  */
-export function renderList(jobs, emptyText = 'No jobs yet. Add your first application above.') {
-  listEl.replaceChildren(...jobs.map(renderJob));
+export function renderList(
+  jobs,
+  { editingId = null, emptyText = 'No jobs yet. Add your first application above.' } = {}
+) {
+  listEl.replaceChildren(...jobs.map((job) => renderJob(job, editingId)));
   emptyEl.hidden = jobs.length > 0;
   emptyEl.textContent = emptyText;
 }
