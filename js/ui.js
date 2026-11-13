@@ -13,6 +13,12 @@ const cancelBtn = document.getElementById('cancel-btn');
 const summaryEl = document.getElementById('summary');
 const filterStatusEl = document.getElementById('filter-status');
 const resultCountEl = document.getElementById('result-count');
+const backupMessageEl = document.getElementById('backup-message');
+const importDialog = document.getElementById('import-dialog');
+const importSummaryEl = document.getElementById('import-summary');
+const importWarningEl = document.getElementById('import-warning');
+const importReplaceBtn = document.getElementById('import-replace');
+const importMergeBtn = document.getElementById('import-merge');
 
 const FIELDS = ['company', 'role', 'link', 'dateApplied', 'status', 'notes'];
 
@@ -109,6 +115,61 @@ export function clearFieldError(name) {
 export function showMessage(text, isError = false) {
   messageEl.textContent = text;
   messageEl.classList.toggle('is-error', isError);
+}
+
+export function showBackupMessage(text, isError = false) {
+  backupMessageEl.textContent = text;
+  backupMessageEl.classList.toggle('is-error', isError);
+}
+
+/** Download `data` as a pretty-printed JSON file. */
+export function downloadJSON(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  // Give the browser a moment to start the download before releasing the blob.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** "1 job", "3 jobs" */
+export const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Ask whether to merge or replace. Resolves to 'merge', 'replace', or 'cancel'.
+ * When the current list is empty there's nothing to replace, so only "Import" is offered.
+ */
+export function askImportMode({ fileName, found, skipped, current }) {
+  const summary = [
+    'Found ',
+    el('strong', '', plural(found, 'job')),
+    ' in ',
+    el('strong', '', fileName),
+  ];
+  if (skipped) summary.push(` (${skipped} skipped as invalid)`);
+  summary.push('. ');
+  summary.push(current ? ['You currently have ', el('strong', '', String(current)), '.'] : 'Your list is empty.');
+  importSummaryEl.replaceChildren(...summary.flat());
+
+  importWarningEl.textContent = current
+    ? `Replace all deletes your ${plural(current, 'current job')}. Export first if you might need them.`
+    : '';
+  importReplaceBtn.hidden = current === 0;
+  importMergeBtn.textContent = current ? 'Merge' : 'Import';
+
+  importDialog.returnValue = '';
+  importDialog.showModal();
+  return new Promise((resolve) => {
+    importDialog.addEventListener(
+      'close',
+      () => resolve(['merge', 'replace'].includes(importDialog.returnValue) ? importDialog.returnValue : 'cancel'),
+      { once: true }
+    );
+  });
 }
 
 function formatDate(iso) {

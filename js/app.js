@@ -10,6 +10,10 @@ import {
   filterJobs,
   sortJobs,
   countByStatus,
+  todayISO,
+  buildBackup,
+  parseBackup,
+  mergeJobs,
 } from './jobs.js';
 import {
   initForm,
@@ -22,7 +26,13 @@ import {
   renderList,
   renderSummary,
   renderResultCount,
+  showBackupMessage,
+  downloadJSON,
+  askImportMode,
+  plural,
 } from './ui.js';
+
+const MAX_IMPORT_BYTES = 5 * 1024 * 1024; // roughly the localStorage limit
 
 const state = {
   jobs: sanitizeJobs(loadJobs()),
@@ -52,11 +62,14 @@ function render() {
   renderResultCount(visible.length, state.jobs.length);
 }
 
-/** Apply a change to the job list, save it, and re-render. Leaves state unchanged if saving fails. */
-function commit(nextJobs) {
+/**
+ * Apply a change to the job list, save it, and re-render. Leaves state unchanged if saving fails.
+ * `notify` shows the error message (defaults to the form's message area).
+ */
+function commit(nextJobs, notify = showMessage) {
   const result = saveJobs(nextJobs);
   if (!result.ok) {
-    showMessage(result.error, true);
+    notify(result.error, true);
     return false;
   }
   state.jobs = nextJobs;
@@ -188,6 +201,75 @@ document.getElementById('sort').addEventListener('change', (e) => {
   const [key, dir] = e.target.value.split(':');
   state.sort = { key, dir };
   render();
+});
+
+// ---- Backup: export / import ----
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  if (state.jobs.length === 0) {
+    showBackupMessage('Nothing to export yet.');
+    return;
+  }
+  downloadJSON(`job-tracker-backup-${todayISO()}.json`, buildBackup(state.jobs));
+  showBackupMessage(`Exported ${plural(state.jobs.length, 'job')}.`);
+});
+
+const importInput = document.getElementById('import-file');
+
+document.getElementById('import-btn').addEventListener('click', () => importInput.click());
+
+importInput.addEventListener('change', async () => {
+  const file = importInput.files[0];
+  importInput.value = ''; // allow picking the same file again later
+  if (!file) return;
+
+  if (file.size > MAX_IMPORT_BYTES) {
+    showBackupMessage('That file is too large to be a Job Tracker backup.', true);
+    return;
+  }
+
+  let parsed;
+  try {
+    parsed = parseBackup(await file.text());
+  } catch (err) {
+    showBackupMessage(err.message || "Couldn't read that file.", true);
+    return;
+  }
+  if (parsed.jobs.length === 0) {
+    showBackupMessage('No valid jobs found in this file.', true);
+    return;
+  }
+
+  const mode = await askImportMode({
+    fileName: file.name,
+    found: parsed.jobs.length,
+    skipped: parsed.skipped,
+    current: state.jobs.length,
+  });
+  if (mode === 'cancel') {
+    showBackupMessage('Import cancelled. Nothing was changed.');
+    return;
+  }
+
+  // Remember the job open in the form, so we can close the edit if the import changed it.
+  const editing = state.editingId ? findJob(state.editingId) : null;
+  const skippedNote = parsed.skipped ? ` ${parsed.skipped} skipped as invalid.` : '';
+  let summary;
+
+  if (mode === 'replace') {
+    if (!commit(parsed.jobs, showBackupMessage)) return;
+    summary = `Replaced your list with ${plural(parsed.jobs.length, 'job')}.`;
+  } else {
+    const result = mergeJobs(state.jobs, parsed.jobs);
+    if (!commit(result.jobs, showBackupMessage)) return;
+    summary = `Added ${result.added}, updated ${result.updated}, ${result.unchanged} already up to date.`;
+  }
+
+  if (editing && findJob(editing.id) !== editing) {
+    stopEditing();
+    summary += ' Your open edit was closed because that job changed.';
+  }
+  showBackupMessage(summary + skippedNote);
 });
 
 // Keep multiple open tabs in sync, so one tab doesn't overwrite another's changes.

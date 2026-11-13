@@ -94,7 +94,31 @@
       <ul id="job-list" class="job-list"></ul>
       <p id="empty-state" class="empty-state" hidden>No jobs yet. Add your first application above.</p>
     </section>
+
+    <section class="panel" aria-labelledby="backup-title">
+      <h2 id="backup-title">Backup</h2>
+      <p class="hint">Your jobs are saved only in this browser. Export a backup file to keep a copy or move your list to another browser.</p>
+      <div class="form-actions">
+        <button type="button" id="export-btn" class="btn">Export JSON</button>
+        <button type="button" id="import-btn" class="btn">Import JSON</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden>
+      </div>
+      <p id="backup-message" class="form-message" role="status"></p>
+    </section>
   </main>
+
+  <dialog id="import-dialog" class="dialog" aria-labelledby="import-dialog-title">
+    <form method="dialog">
+      <h2 id="import-dialog-title">Import backup</h2>
+      <p id="import-summary"></p>
+      <p id="import-warning" class="dialog-warning"></p>
+      <div class="dialog-actions">
+        <button type="submit" value="cancel" class="btn" autofocus>Cancel</button>
+        <button type="submit" value="replace" id="import-replace" class="btn btn-danger">Replace all</button>
+        <button type="submit" value="merge" id="import-merge" class="btn btn-primary">Merge</button>
+      </div>
+    </form>
+  </dialog>
 
   <script type="module" src="js/app.js"></script>
 </body>

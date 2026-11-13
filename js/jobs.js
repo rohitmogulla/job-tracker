@@ -135,6 +135,77 @@ export function sortJobs(jobs, key = 'dateApplied', dir = 'desc') {
   });
 }
 
+// ---- Backup (export / import) ----
+
+const BACKUP_VERSION = 1;
+
+/** Wrap jobs in the backup file format. */
+export function buildBackup(jobs) {
+  return {
+    app: 'job-tracker',
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    jobs,
+  };
+}
+
+/**
+ * Parse a backup file's text. Accepts the export format or a plain array of jobs.
+ * Returns { jobs, skipped } with jobs already cleaned by sanitizeJobs.
+ * Throws an Error with a readable message if the file can't be used.
+ */
+export function parseBackup(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error("This file isn't valid JSON.");
+  }
+
+  let list;
+  if (Array.isArray(data)) {
+    list = data;
+  } else if (data && typeof data === 'object' && Array.isArray(data.jobs)) {
+    if (typeof data.version === 'number' && data.version > BACKUP_VERSION) {
+      throw new Error('This backup was made by a newer version of Job Tracker.');
+    }
+    list = data.jobs;
+  } else {
+    throw new Error("This file doesn't look like a Job Tracker backup.");
+  }
+
+  const jobs = sanitizeJobs(list);
+  return { jobs, skipped: list.length - jobs.length };
+}
+
+/**
+ * Merge imported jobs into the current list, matching by id.
+ * New ids are added; for matching ids the more recently changed copy (updatedAt) is kept.
+ * Returns { jobs, added, updated, unchanged }.
+ */
+export function mergeJobs(current, incoming) {
+  const byId = new Map(current.map((job) => [job.id, job]));
+  const added = [];
+  let updated = 0;
+  let unchanged = 0;
+
+  for (const job of incoming) {
+    const existing = byId.get(job.id);
+    if (!existing) {
+      added.push(job);
+      byId.set(job.id, job);
+    } else if ((job.updatedAt || 0) > (existing.updatedAt || 0)) {
+      byId.set(job.id, job);
+      updated += 1;
+    } else {
+      unchanged += 1;
+    }
+  }
+
+  const jobs = current.map((job) => byId.get(job.id)).concat(added);
+  return { jobs, added: added.length, updated, unchanged };
+}
+
 /** Count jobs per status, e.g. { Applied: 3, Interview: 1, Offer: 0, Rejected: 2 }. */
 export function countByStatus(jobs) {
   const counts = Object.fromEntries(STATUSES.map((s) => [s, 0]));
